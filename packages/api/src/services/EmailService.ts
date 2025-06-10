@@ -6,6 +6,8 @@ export class EmailService {
 	public static async send({
 		from,
 		to,
+		cc,
+		bcc,
 		content,
 		reply,
 		headers,
@@ -16,6 +18,8 @@ export class EmailService {
 		};
 		reply?: string;
 		to: string[];
+		cc?: string[];
+		bcc?: string[];
 		content: {
 			subject: string;
 			html: string;
@@ -36,17 +40,12 @@ export class EmailService {
 
 		const rawMessage = `From: ${from.name} <${from.email}>
 To: ${to.join(", ")}
+${cc?.length ? `Cc: ${cc.join(", ")}\n` : ""}
 Reply-To: ${reply || from.email}
 Subject: ${content.subject}
 MIME-Version: 1.0
 Content-Type: multipart/alternative; boundary="NextPart"
-${
-	headers
-		? Object.entries(headers)
-				.map(([key, value]) => `${key}: ${value}`)
-				.join("\n")
-		: ""
-}
+${headers ? Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join("\n") : ""}
 ${unsubscribeLink}
 
 --NextPart
@@ -58,7 +57,7 @@ ${EmailService.breakLongLines(content.html, 500)}
 `;
 
 		const response = await ses.sendRawEmail({
-			Destinations: to,
+			Destinations: [...to, ...(cc || []), ...(bcc || [])],
 			ConfigurationSetName: AWS_SES_CONFIGURATION_SET,
 			RawMessage: {
 				Data: new TextEncoder().encode(rawMessage),
